@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect, useState, ChangeEvent, FormEvent } from "react";
+import { useRouter } from "next/router";
 
 type Employee = {
   id: number;
@@ -11,55 +11,93 @@ type Employee = {
   photo?: string;
 };
 
-type LeaveApplication = {
-  id: number;
-  employee_id: number;
-  start_date: string;
-  end_date: string;
-  reason: string;
-  status: string;
-};
-
 export default function EmployeeDashboard() {
   const router = useRouter();
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [leaveApps, setLeaveApps] = useState<LeaveApplication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
 
-    if (!token || role !== 'EMPLOYEE') {
-      router.replace('/login');
+    if (!token || role !== "EMPLOYEE") {
+      router.replace("/login");
       return;
     }
 
-    fetchEmployeeData(token);
+    fetchEmployee(token);
   }, []);
 
-  async function fetchEmployeeData(token: string) {
+  async function fetchEmployee(token: string) {
     try {
-      const res = await fetch('/api/employee/profile', {
+      const res = await fetch("/api/employees/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to load employee profile');
-
+      if (!res.ok) {
+        throw new Error("Failed to load employee profile");
+      }
       const data = await res.json();
       setEmployee(data.employee);
-      setLeaveApps(data.leaveApplications || []);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   }
-
   function handleLogout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    router.push('/login');
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    router.push("/login");
+  }
+  async function handlePhotoUpload(e: FormEvent) {
+    e.preventDefault();
+    if (!photoFile || !employee) return;
+
+    const formData = new FormData();
+    formData.append("photo", photoFile);
+
+    const token = localStorage.getItem("token")!;
+    const res = await fetch("/api/employees/update-photo", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    if (res.ok) {
+      setSuccessMsg("Photo updated successfully.");
+      setError("");
+      fetchEmployee(token);
+    } else {
+      setError("Failed to update photo.");
+      setSuccessMsg("");
+    }
+  }
+  async function handlePasswordChange(e: FormEvent) {
+    e.preventDefault();
+    if (!newPassword) return;
+
+    const token = localStorage.getItem("token")!;
+    const res = await fetch("/api/employees/update-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ newPassword }),
+    });
+
+    if (res.ok) {
+      setSuccessMsg("Password updated successfully.");
+      setError("");
+      setNewPassword("");
+    } else {
+      setError("Failed to update password.");
+      setSuccessMsg("");
+    }
   }
 
   return (
@@ -72,11 +110,15 @@ export default function EmployeeDashboard() {
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
+      {successMsg && <div className="alert alert-success">{successMsg}</div>}
       {loading ? (
         <p>Loading...</p>
       ) : employee ? (
         <>
-          <div className="card p-4 mb-5 shadow-sm" style={{ maxWidth: '800px' }}>
+          <div
+            className="card p-4 mb-4 shadow-sm"
+            style={{ maxWidth: "800px" }}
+          >
             <h4>Your Profile</h4>
             <table className="table table-bordered">
               <tbody>
@@ -98,42 +140,62 @@ export default function EmployeeDashboard() {
                 </tr>
                 <tr>
                   <th>Salary</th>
-                  <td>£{employee.salary.toFixed(2)}</td>
+                  <td>£{Number(employee.salary).toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
             {employee.photo && (
-              <img src={employee.photo} alt="Profile" width={100} className="rounded-circle mt-3" />
+              <img
+                src={employee.photo}
+                alt="Profile"
+                width={100}
+                className="rounded-circle mt-3"
+              />
             )}
           </div>
-
-          <div className="card p-4 shadow-sm">
-            <h4>Leave Applications</h4>
-            {leaveApps.length === 0 ? (
-              <p>No leave applications submitted yet.</p>
-            ) : (
-              <table className="table table-bordered table-striped">
-                <thead className="table-dark">
-                  <tr>
-                    <th>From</th>
-                    <th>To</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveApps.map(app => (
-                    <tr key={app.id}>
-                      <td>{app.start_date}</td>
-                      <td>{app.end_date}</td>
-                      <td>{app.reason}</td>
-                      <td>{app.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <form
+            onSubmit={handlePhotoUpload}
+            className="mb-5"
+            encType="multipart/form-data"
+          >
+            <h5>Update Photo</h5>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                if (e.target.files && e.target.files[0])
+                  setPhotoFile(e.target.files[0]);
+              }}
+              className="form-control mb-2"
+              required
+            />
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ width: "auto", padding: "8px 60px" }}
+            >
+              Upload
+            </button>
+          </form>
+          <form onSubmit={handlePasswordChange} className="mb-5">
+            <h5>Change Password</h5>
+            <input
+              type="password"
+              className="form-control mb-2"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password"
+              required
+              minLength={6}
+            />
+            <button
+              type="submit"
+              className="btn btn-warning"
+              style={{ width: "auto", padding: "8px 30px" }}
+            >
+              Update Password
+            </button>
+          </form>
         </>
       ) : (
         <p>No employee data found.</p>

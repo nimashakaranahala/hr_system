@@ -9,6 +9,7 @@ type Employee = {
   department: string;
   salary: number;
   photo?: string;
+  password?: string;
 };
 
 export default function Admin() {
@@ -24,9 +25,9 @@ export default function Admin() {
     department: '',
     salary: '',
     photo: '',
+    password: '',
   });
 
-  // Auth check on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
@@ -54,7 +55,7 @@ export default function Admin() {
   }
 
   function resetForm() {
-    setForm({ id: 0, name: '', email: '', position: '', department: '', salary: '', photo: '' });
+    setForm({ id: 0, name: '', email: '', position: '', department: '', salary: '', photo: '', password: '' });
   }
 
   function handleLogout() {
@@ -68,7 +69,7 @@ export default function Admin() {
     const token = localStorage.getItem('token');
     if (!token) return router.replace('/login');
 
-    const payload = {
+    const payload: any = {
       name: form.name,
       email: form.email,
       position: form.position,
@@ -76,6 +77,10 @@ export default function Admin() {
       salary: parseFloat(form.salary),
       photo: form.photo,
     };
+
+    if (form.password) {
+      payload.password = form.password;
+    }
 
     try {
       let res;
@@ -116,6 +121,7 @@ export default function Admin() {
       department: emp.department,
       salary: emp.salary.toString(),
       photo: emp.photo || '',
+      password: '', 
     });
   }
 
@@ -145,7 +151,7 @@ export default function Admin() {
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
-        body: formData, 
+        body: formData,
       });
       const data = await res.json();
       if (data.url) {
@@ -160,7 +166,6 @@ export default function Admin() {
 
   return (
     <div className="container-fluid vh-100 bg-light p-4">
-      {/* Header Row */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Admin Dashboard</h2>
         <button onClick={handleLogout} className="btn btn-outline-danger">
@@ -170,7 +175,6 @@ export default function Admin() {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* Form */}
       <div className="card p-4 mb-5 shadow-sm" style={{ maxWidth: '900px' }}>
         <h4>{form.id ? 'Edit Employee' : 'Add New Employee'}</h4>
         <form onSubmit={handleSubmit}>
@@ -222,8 +226,28 @@ export default function Admin() {
                 required
               />
             </div>
+
             <div className="col-md-6">
-              <input type="file" name="file" className="form-control" onChange={handleFileChange} accept="image/*" />
+              <input
+                type="password"
+                className="form-control"
+                placeholder={form.id ? 'New Password (optional)' : 'Password'}
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                required={!form.id}
+              />
+            </div>
+            
+            <div className="col-md-6">
+              <label htmlFor="photoUpload" className="form-label">Select your photo</label>
+              <input
+                type="file"
+                id="photoUpload"
+                name="file"
+                className="form-control"
+                onChange={handleFileChange}
+                accept="image/*"
+              />
             </div>
 
             {form.photo && (
@@ -267,6 +291,7 @@ export default function Admin() {
                 <th>Position</th>
                 <th>Department</th>
                 <th>Salary</th>
+                <th>Password (Hashed)</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -292,6 +317,9 @@ export default function Admin() {
                   <td>{emp.position}</td>
                   <td>{emp.department}</td>
                   <td>£{Number(emp.salary).toFixed(2)}</td>
+                  <td style={{ fontSize: '0.75em', wordBreak: 'break-all' }}>
+                    {emp.password || 'N/A'}
+                  </td>
                   <td>
                     <button
                       className="btn btn-sm btn-warning me-2"
