@@ -99,7 +99,7 @@ export default function Login() {
               </button>
 
               <p className="small fw-bold mt-3 mb-0 text-center">
-                Don't have an account?{" "}
+                Do not have an account?{" "}
                 <a href="#" className="link-danger">
                   Register
                 </a>
