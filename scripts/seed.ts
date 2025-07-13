@@ -9,7 +9,7 @@ const pool = new Pool({
 });
 
 async function seed() {
-  // Create tables if not exist
+  // Create users table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -20,6 +20,7 @@ async function seed() {
     );
   `);
 
+  // Create employees table with password
   await pool.query(`
     CREATE TABLE IF NOT EXISTS employees (
       id SERIAL PRIMARY KEY,
@@ -28,15 +29,18 @@ async function seed() {
       position TEXT NOT NULL,
       department TEXT NOT NULL,
       salary NUMERIC NOT NULL,
-      photo TEXT
+      photo TEXT,
+      password TEXT
     );
   `);
 
   // Hash passwords
   const adminPassword = await bcrypt.hash('admin123', 10);
   const employeePassword = await bcrypt.hash('employee123', 10);
+  const alicePassword = await bcrypt.hash('alice123', 10);
+  const bobPassword = await bcrypt.hash('bob123', 10);
 
-  // Insert users (avoid duplicates with ON CONFLICT)
+  // Insert users
   await pool.query(
     `
     INSERT INTO users (name, email, password, role)
@@ -48,23 +52,24 @@ async function seed() {
     [adminPassword, employeePassword]
   );
 
-  // Insert some employees
+  // Insert employees
   await pool.query(
     `
-    INSERT INTO employees (name, email, position, department, salary, photo)
+    INSERT INTO employees (name, email, position, department, salary, photo, password)
     VALUES 
-      ('Alice Johnson', 'alice@company.com', 'Developer', 'Engineering', 70000, NULL),
-      ('Bob Smith', 'bob@company.com', 'Designer', 'Design', 65000, NULL)
+      ('Alice Johnson', 'alice@company.com', 'Developer', 'Engineering', 70000, NULL, $1),
+      ('Bob Smith', 'bob@company.com', 'Designer', 'Design', 65000, NULL, $2)
     ON CONFLICT (email) DO NOTHING;
-    `
+    `,
+    [alicePassword, bobPassword]
   );
 
-  console.log('Database seeded successfully');
+  console.log('✅ Database seeded successfully');
   await pool.end();
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error('Seed error:', err);
+  console.error('❌ Seed error:', err);
   process.exit(1);
 });
