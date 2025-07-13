@@ -32,4 +32,6 @@ jobs:
           cd ${{ secrets.EC2_PATH }}
           npm install
           npm run build
-          pm2 restart all || pm2 start npm --name "hr_system" -- run start
+          pm2 describe hr_system > /dev/null \
+            && pm2 restart hr_system \
+            || pm2 start npm --name "hr_system" -- run dev
