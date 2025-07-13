@@ -167,7 +167,7 @@ export default function Admin() {
   return (
     <div className="container-fluid vh-100 bg-light p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Admin Dashboard</h2>
+        <h2>Admin Dashboardd</h2>
         <button onClick={handleLogout} className="btn btn-outline-danger">
           Logout
         </button>
